@@ -1,7 +1,8 @@
 import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/source-serif-4/wght-italic.css';
 import './styles.css';
-import { fmt } from './dom';
+import * as api from './api';
+import { fmt, h } from './dom';
 import { Globe } from './map';
 import { Panel } from './panel';
 import { initSearch } from './search';
@@ -29,6 +30,12 @@ const panel = new Panel($('#panel'), $('#panel .panel-body'), {
   showRange: (fc) => globe.showRange(fc),
   flyTo: (lon, lat) => globe.flyTo(lon, lat),
   setHash: (s) => setHash(s),
+  journeys: {
+    setOverlay: (src, fc) => globe.setOverlay(src, fc),
+    dimRange: (d) => globe.dimRange(d),
+    fitTo: (p) => globe.fitTo(p),
+    base,
+  },
   opened: (open) => {
     document.body.classList.toggle('panel-open', open);
     globe.setPadding(open ? (wide() ? { right: 460 } : { bottom: window.innerHeight * 0.55 }) : {});
@@ -60,6 +67,28 @@ const setLooked = async (on: boolean) => {
 };
 lookedBtn.addEventListener('click', () => setLooked(!looked));
 
+// Migrations: the species with a MiCO network, most connected first
+const migrations = $<HTMLDialogElement>('#migrations');
+$('#migrations-open').addEventListener('click', async () => {
+  migrations.showModal();
+  const list = migrations.querySelector('ul')!;
+  if (list.childElementCount) return;
+  try {
+    const idx = await api.micoIndex(base);
+    const items = Object.entries(idx.species).sort((a, b) => b[1].routes - a[1].routes || b[1].sites - a[1].sites);
+    for (const [id, sp] of items) {
+      const b = h('button', { class: 'mig' }, h('span', { class: 'mig-name', text: sp.common }), h('span', { class: 'latin', text: sp.scientific }),
+        h('span', { class: 'mig-n', text: sp.routes ? `${fmt(sp.routes)} routes, ${fmt(sp.sites)} places` : `${fmt(sp.sites)} places` }));
+      b.addEventListener('click', () => { migrations.close(); hint.hidden = true; panel.showSpecies(Number(id)); });
+      list.append(h('li', {}, b));
+    }
+  } catch {
+    list.append(h('li', { class: 'fine', text: 'The list did not load. Reload the page to try again.' }));
+  }
+});
+migrations.querySelector('.about-close')?.addEventListener('click', () => migrations.close());
+migrations.addEventListener('click', (e) => { if (e.target === migrations) migrations.close(); });
+
 // About
 const about = $<HTMLDialogElement>('#about');
 $('#about-open').addEventListener('click', () => about.showModal());
@@ -67,7 +96,7 @@ about.querySelector('.about-close')?.addEventListener('click', () => about.close
 about.addEventListener('click', (e) => { if (e.target === about) about.close(); });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !about.open && !$('#panel').hidden && document.activeElement !== $('#search')) panel.close();
+  if (e.key === 'Escape' && !about.open && !migrations.open && !$('#panel').hidden && document.activeElement !== $('#search')) panel.close();
   if (e.key === '/' && document.activeElement !== $('#search')) { e.preventDefault(); $('#search').focus(); }
 });
 

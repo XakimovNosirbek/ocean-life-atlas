@@ -39,6 +39,7 @@
     </div>
     <div class="corner-buttons">
       <button id="looked" class="btn" aria-pressed="false">Where scientists have looked</button>
+      <button id="migrations-open" class="btn ghost">Migrations</button>
       <button id="about-open" class="btn ghost">About</button>
     </div>
   </div>
@@ -47,6 +48,13 @@
     <button class="panel-close" aria-label="Close panel">×</button>
     <div class="panel-body"></div>
   </aside>
+
+  <dialog id="migrations" aria-labelledby="migrations-title">
+    <button class="about-close" aria-label="Close">×</button>
+    <h2 id="migrations-title">Follow a migration</h2>
+    <p>Animals whose journeys have been pieced together from tracking and tagging studies (MiCO, Bentley et al. 2025). Pick one to see where it gathers, the routes between, and the tagged animals in OBIS.</p>
+    <ul class="mig-list"></ul>
+  </dialog>
 
   <dialog id="about" aria-labelledby="about-title">
     <button class="about-close" aria-label="Close">×</button>
@@ -61,6 +69,7 @@
       <li>Summaries: <a href="https://en.wikipedia.org">Wikipedia</a> (CC BY-SA 4.0). Sea names: <a href="https://www.marineregions.org">Marine Regions</a> (CC BY 4.0).</li>
       <li>Globe imagery: NASA Blue Marble through <a href="https://earthdata.nasa.gov/gibs">GIBS</a> (public domain).</li>
       <li>Red List status: IUCN categories as provided by OBIS.</li>
+      <li>Migration networks: <a href="https://doi.org/10.1038/s41467-025-59271-7">MiCO</a>, Bentley et al. (2025) Nature Communications, data <a href="https://doi.org/10.5281/zenodo.14873514">Zenodo</a> (CC0). Tagged-animal tracks: OBIS telemetry records (satellite and acoustic tags), credited per study on each species page.</li>
     </ul>
     <p>Everything loads live from these services in your browser; this site has no server and keeps no data about you.</p>
     <p>Code: <a href="https://github.com/bristleconelab/ocean-life-atlas">github.com/bristleconelab/ocean-life-atlas</a> (MIT). Sister project: <a href="https://seaflooratlas.org">Seafloor Atlas</a>.</p>

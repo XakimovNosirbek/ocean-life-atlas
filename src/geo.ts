@@ -65,3 +65,25 @@ export function weightedCentre(cells: { bbox: BBox; n: number }[]): { lon: numbe
   if (w === 0) return null;
   return { lon: Math.atan2(sy, sx) * (180 / Math.PI), lat: sl / w };
 }
+
+/** Points along the great circle from a to b (lon/lat degrees), longitudes unwrapped so the line never jumps 360°. */
+export function greatCircle(a: [number, number], b: [number, number], steps = 32): [number, number][] {
+  const r = Math.PI / 180;
+  const [l1, p1] = [a[0] * r, a[1] * r], [l2, p2] = [b[0] * r, b[1] * r];
+  const d = 2 * Math.asin(Math.sqrt(Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((l2 - l1) / 2) ** 2));
+  if (d < 1e-9) return [a, b];
+  const out: [number, number][] = [];
+  let prev = a[0];
+  for (let i = 0; i <= steps; i++) {
+    const f = i / steps, A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2);
+    const y = A * Math.cos(p1) * Math.sin(l1) + B * Math.cos(p2) * Math.sin(l2);
+    const z = A * Math.sin(p1) + B * Math.sin(p2);
+    let lon = Math.atan2(y, x) / r;
+    while (lon - prev > 180) lon -= 360;
+    while (lon - prev < -180) lon += 360;
+    prev = lon;
+    out.push([lon, Math.atan2(z, Math.sqrt(x * x + y * y)) / r]);
+  }
+  return out;
+}

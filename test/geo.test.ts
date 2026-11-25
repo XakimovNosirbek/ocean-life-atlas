@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bboxToWkt, formatLatLon, geohash, geohashBounds, weightedCentre } from '../src/geo';
+import { bboxToWkt, formatLatLon, geohash, geohashBounds, greatCircle, weightedCentre } from '../src/geo';
 
 describe('geohash', () => {
   it('matches known reference hashes', () => {
@@ -36,5 +36,17 @@ describe('helpers', () => {
     ])!;
     expect(Math.abs(Math.abs(c.lon) - 180)).toBeLessThan(1);
     expect(c.lat).toBeCloseTo(0.5);
+  });
+});
+
+describe('great circle', () => {
+  it('passes through the right midpoint and crosses 180° without a jump', () => {
+    const eq = greatCircle([0, 0], [90, 0], 2);
+    expect(eq[1][0]).toBeCloseTo(45); expect(eq[1][1]).toBeCloseTo(0);
+    const pac = greatCircle([170, 0], [-170, 0], 4);
+    expect(pac.at(-1)![0]).toBeCloseTo(190);
+    for (let i = 1; i < pac.length; i++) expect(Math.abs(pac[i][0] - pac[i - 1][0])).toBeLessThan(10);
+    // north Atlantic route bends towards the pole
+    expect(greatCircle([-74, 40], [0, 51], 2)[1][1]).toBeGreaterThan(45.5);
   });
 });

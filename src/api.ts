@@ -8,6 +8,7 @@
 import type { Bin, Taxon } from './taxa';
 import { parseWikidata, type WikiInfo } from './wiki';
 import type { Completion } from './search-merge';
+import type { OccRow } from './tracks';
 
 const OBIS = 'https://api.obis.org/v3';
 const WORMS = 'https://www.marinespecies.org/rest';
@@ -79,6 +80,46 @@ export async function obisRecordCounts(ids: number[]): Promise<Map<number, numbe
 export function obisComplete(text: string): Promise<Completion[]> {
   return getJSON(`${OBIS}/taxon/complete/verbose/${encodeURIComponent(text)}`);
 }
+
+const OCC_FIELDS = 'id,organismID,eventDate,decimalLongitude,decimalLatitude,dataset_id,basisOfRecord,month';
+/** Up to 5,000 occurrence rows. OBIS orders rows by their random UUID, so the first page is a fair random sample. */
+export function obisSample(id: number): Promise<{ total: number; results: OccRow[] }> {
+  return getJSON(`${OBIS}/occurrence?${q({ taxonid: id, size: 5000, fields: OCC_FIELDS })}`, undefined, 45000);
+}
+/** All rows of a taxon in the given datasets, page by page (cursor = last id), up to maxRows. */
+export async function obisRowsInDatasets(id: number, datasets: string[], maxRows: number, progress?: (got: number, total: number) => void): Promise<{ rows: OccRow[]; total: number }> {
+  const rows: OccRow[] = [];
+  let after: string | undefined, total = 0;
+  while (rows.length < maxRows) {
+    const params: Record<string, string | number> = { taxonid: id, datasetid: datasets.join(','), size: 5000, fields: OCC_FIELDS };
+    if (after) params.after = after;
+    const r = await getJSON<{ total: number; results: OccRow[] }>(`${OBIS}/occurrence?${q(params)}`, undefined, 45000);
+    total = r.total;
+    rows.push(...r.results);
+    progress?.(rows.length, total);
+    if (r.results.length < 5000) break;
+    after = r.results.at(-1)!.id;
+  }
+  return { rows, total };
+}
+export function obisYears(id: number): Promise<{ year: number; records: number }[]> {
+  return getJSON(`${OBIS}/statistics/years?${q({ taxonid: id })}`);
+}
+export interface DatasetMeta { id: string; title: string; licence: string; url: string }
+export async function obisDataset(id: string): Promise<DatasetMeta | null> {
+  const r = await getJSON<{ results: { id: string; title: string; intellectualrights?: string; url?: string }[] }>(`${OBIS}/dataset/${id}`).catch(() => null);
+  const d = r?.results?.[0];
+  if (!d) return null;
+  const lic = d.intellectualrights ?? '';
+  const short = /CC0|public domain/i.test(lic) ? 'CC0' : /CC[- ]?BY[- ]?NC/i.test(lic) ? 'CC BY-NC' : /CC[- ]?BY/i.test(lic) || /Attribution/i.test(lic) ? 'CC BY' : 'see dataset';
+  return { id: d.id, title: d.title, licence: short, url: `https://obis.org/dataset/${d.id}` };
+}
+
+// ---------- MiCO (stored, see scripts/build_mico.mjs) ----------
+export interface MicoIndex { source: string; species: Record<string, { common: string; scientific: string; sites: number; routes: number }> }
+export interface MicoSpecies { common: string; scientific: string; sites: [number, number, number, string][]; routes: [number, number, number, number, number, number][] }
+export function micoIndex(base: string): Promise<MicoIndex> { return getJSON(`${base}data/mico/index.json`); }
+export function micoSpecies(base: string, id: number): Promise<MicoSpecies> { return getJSON(`${base}data/mico/${id}.json`); }
 
 // ---------- WoRMS ----------
 export interface AphiaRecord {

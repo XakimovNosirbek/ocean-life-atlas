@@ -1,4 +1,5 @@
-// The globe: NASA Blue Marble imagery, plus three overlays (records density, the clicked square, a species range).
+// The globe: NASA Blue Marble imagery, plus overlays: records density, the clicked square, a species range, its MiCO
+// migration network and satellite-tag tracks.
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, MapMouseEvent, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -9,6 +10,10 @@ const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_Shad
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 export const COLORS = { abyss: '#0b2233', plankton: '#f2c94c', foam: '#f4f8f7', looked: ['#2a1d5c', '#2f6f99', '#5fc0b0', '#c8ef9c', '#fff7c2'] };
+/** One colour per tagged animal, cycled; all readable on dark water. The range squares are dimmed while tracks show. */
+export const TRACK_COLORS = ['#7fe3c8', '#ff9e7a', '#8ecbff', '#ffd166', '#c39bff', '#ff7aa2', '#b8f27c', '#ffffff'];
+/** MiCO site colours by what the animals do there. */
+export const ACTIVITY_COLORS = { breeding: '#ff7aa2', feeding: '#7fe3c8', migrating: '#8ecbff', observed: '#f4f8f7' };
 
 const style: StyleSpecification = {
   version: 8,
@@ -26,6 +31,10 @@ const style: StyleSpecification = {
     looked: { type: 'geojson', data: EMPTY },
     range: { type: 'geojson', data: EMPTY },
     square: { type: 'geojson', data: EMPTY },
+    micoRoutes: { type: 'geojson', data: EMPTY },
+    micoSites: { type: 'geojson', data: EMPTY },
+    tracks: { type: 'geojson', data: EMPTY },
+    heads: { type: 'geojson', data: EMPTY },
   },
   layers: [
     { id: 'bg', type: 'background', paint: { 'background-color': COLORS.abyss } },
@@ -44,6 +53,34 @@ const style: StyleSpecification = {
       paint: { 'fill-color': COLORS.plankton, 'fill-opacity': ['interpolate', ['linear'], ['log10', ['max', 1, ['get', 'n']]], 0, 0.45, 3, 0.85] },
     },
     { id: 'range-edge', type: 'line', source: 'range', paint: { 'line-color': '#7a5d00', 'line-width': 0.4, 'line-opacity': 0.6 } },
+    {
+      id: 'mico-routes', type: 'line', source: 'micoRoutes', layout: { 'line-cap': 'round' },
+      paint: {
+        'line-color': '#ffb3c7',
+        'line-width': ['interpolate', ['linear'], ['log10', ['max', 1, ['get', 'n']]], 0, 0.8, 2, 3.2],
+        'line-opacity': 0.6,
+      },
+    },
+    {
+      id: 'mico-sites', type: 'circle', source: 'micoSites',
+      paint: {
+        'circle-color': ['match', ['get', 'kind'], 'breeding', ACTIVITY_COLORS.breeding, 'feeding', ACTIVITY_COLORS.feeding,
+          'migrating', ACTIVITY_COLORS.migrating, ACTIVITY_COLORS.observed],
+        'circle-radius': ['interpolate', ['linear'], ['sqrt', ['max', 1, ['get', 'n']]], 1, 3.5, 30, 10],
+        'circle-stroke-color': COLORS.abyss, 'circle-stroke-width': 1.2, 'circle-opacity': 0.92,
+      },
+    },
+    {
+      id: 'tracks', type: 'line', source: 'tracks', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': ['to-color', ['at', ['%', ['get', 'c'], TRACK_COLORS.length], ['literal', TRACK_COLORS]]], 'line-width': 1.8, 'line-opacity': 0.9 },
+    },
+    {
+      id: 'heads', type: 'circle', source: 'heads',
+      paint: {
+        'circle-color': ['to-color', ['at', ['%', ['get', 'c'], TRACK_COLORS.length], ['literal', TRACK_COLORS]]],
+        'circle-radius': 4.5, 'circle-stroke-color': COLORS.abyss, 'circle-stroke-width': 1.5,
+      },
+    },
     { id: 'square', type: 'line', source: 'square', paint: { 'line-color': COLORS.foam, 'line-width': 2.5 } },
   ],
 };
@@ -79,6 +116,34 @@ export class Globe {
   async showRange(fc: GeoJSON.FeatureCollection | null) {
     await this.ready;
     (this.map.getSource('range') as GeoJSONSource).setData(fc ?? EMPTY);
+  }
+
+  /** Set one of the journey overlays (micoRoutes, micoSites, tracks, heads); null clears it. */
+  async setOverlay(source: 'micoRoutes' | 'micoSites' | 'tracks' | 'heads', fc: GeoJSON.FeatureCollection | null) {
+    await this.ready;
+    (this.map.getSource(source) as GeoJSONSource).setData(fc ?? EMPTY);
+  }
+
+  /** Fade the yellow range squares so journeys drawn on top stay readable. */
+  async dimRange(dim: boolean) {
+    await this.ready;
+    this.map.setPaintProperty('range', 'fill-opacity', dim ? 0.22
+      : ['interpolate', ['linear'], ['log10', ['max', 1, ['get', 'n']]], 0, 0.45, 3, 0.85]);
+  }
+
+  /** Frame a set of points. Wide sets (an ocean basin or more) get a centred globe view: fitBounds on a globe would
+   *  zoom into the middle of the box instead. */
+  async fitTo(points: [number, number][]) {
+    await this.ready;
+    if (!points.length) return;
+    let sx = 0, sy = 0;
+    for (const [x] of points) { sx += Math.cos((x * Math.PI) / 180); sy += Math.sin((x * Math.PI) / 180); }
+    const cLon = (Math.atan2(sy, sx) * 180) / Math.PI;
+    const rel = points.map(([x, y]) => [((x - cLon + 540) % 360) - 180, y] as [number, number]);
+    const xs = rel.map((p) => p[0]), ys = points.map((p) => p[1]);
+    const w = Math.min(...xs), e = Math.max(...xs), s = Math.max(-80, Math.min(...ys)), n = Math.min(80, Math.max(...ys));
+    if (e - w > 100 || n - s > 70) { this.flyTo(cLon + (w + e) / 2, (s + n) / 2, 1.7); return; }
+    this.map.fitBounds([[cLon + w, s], [cLon + e, n]], { padding: 60, maxZoom: 5, duration: 1400 });
   }
 
   /** Records per 1.4° square, loaded the first time the layer is switched on. */

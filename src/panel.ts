@@ -8,6 +8,8 @@ import {
   type GroupId, type Taxon,
 } from './taxa';
 import { articleTitle, commonsThumbs, type WikiInfo } from './wiki';
+import { renderJourneys, type JourneyHost } from './journeys';
+import { silhouetteFor } from './silhouettes';
 
 const PAGE = 36;
 const plural = (n: number, w: string) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
@@ -20,11 +22,17 @@ export interface PanelHost {
   flyTo(lon: number, lat: number): void;
   setHash(s: { at?: { lat: number; lon: number }; sp?: number }): void;
   opened(open: boolean): void;
+  journeys: JourneyHost;
 }
 
 export class Panel {
   private token = 0;
   private place: { lat: number; lon: number } | null = null;
+  private cleanups: (() => void)[] = [];
+  /** Set when a journey overlay framed the globe, so the range does not fly elsewhere afterwards. */
+  private framed = false;
+
+  private runCleanups() { for (const c of this.cleanups.splice(0)) c(); this.framed = false; }
 
   constructor(private root: HTMLElement, private body: HTMLElement, private host: PanelHost) {
     root.querySelector('.panel-close')?.addEventListener('click', () => this.close());
@@ -35,6 +43,7 @@ export class Panel {
 
   close() {
     this.token++;
+    this.runCleanups();
     this.place = null;
     this.root.hidden = true;
     this.host.showSquare(null);
@@ -44,6 +53,7 @@ export class Panel {
   }
 
   private open(): number {
+    this.runCleanups();
     this.root.hidden = false;
     this.host.opened(true);
     this.body.replaceChildren();
@@ -145,7 +155,8 @@ export class Panel {
     for (const sp of slice) {
       const name = h('span', { class: 'tile-name', text: '' });
       const latin = h('span', { class: 'latin', text: sp.scientificName });
-      const photo = h('div', { class: `tile-photo g-${groupOf(sp)}`, attrs: { 'data-photo': 'loading' } }, h('span', { class: 'tile-group', text: GROUP_LABEL[groupOf(sp)] }));
+      const photo = h('div', { class: `tile-photo g-${groupOf(sp)}`, attrs: { 'data-photo': 'loading' } },
+        silhouetteFor(sp), h('span', { class: 'tile-group', text: GROUP_LABEL[groupOf(sp)] }));
       const badge = sp.category && THREATENED.has(sp.category)
         ? h('span', { class: `iucn iucn-${sp.category}`, text: IUCN_LABEL[sp.category] }) : null;
       const btn = h('button', { class: 'tile', attrs: { 'aria-label': sp.scientificName } }, photo, badge, name, latin,
@@ -214,9 +225,10 @@ export class Panel {
     const about = h('div', { class: 'about-sp' });
     const facts = h('dl', { class: 'facts' });
     const depth = h('section', { class: 'depth' });
+    const journeys = h('div', { class: 'journeys-mount' });
     const links = h('p', { class: 'links' });
     const rangeNote = h('p', { class: 'fine', text: 'Loading where it has been recorded…' });
-    this.body.append(...[nav, figure, name, latin, lineage, status, about, rangeNote, facts, depth, links].filter((x): x is HTMLElement => !!x));
+    this.body.append(...[nav, figure, name, latin, lineage, status, about, rangeNote, facts, journeys, depth, links].filter((x): x is HTMLElement => !!x));
 
     const [taxon, stats, env, info] = await Promise.all([
       api.obisTaxon(id).catch(() => null),
@@ -300,6 +312,9 @@ export class Panel {
       }
     }
 
+    const jh: JourneyHost = { ...this.host.journeys, fitTo: (p) => { this.framed = true; this.host.journeys.fitTo(p); } };
+    this.cleanups.push(renderJourneys(id, name.textContent || taxon.scientificName, journeys, jh, () => t === this.token));
+
     links.append(
       h('a', { text: 'OBIS', attrs: { href: `https://obis.org/taxon/${id}`, target: '_blank', rel: 'noopener' } }), ' ',
       h('a', { text: 'WoRMS', attrs: { href: `https://www.marinespecies.org/aphia.php?p=taxdetails&id=${id}`, target: '_blank', rel: 'noopener' } }),
@@ -318,7 +333,7 @@ export class Panel {
         ? `Yellow squares on the globe: the ${fmt(cells.length)} places where it has been recorded.`
         : 'No mapped records for this species yet.';
       const c = weightedCentre(cells);
-      if (c && !back) this.host.flyTo(c.lon, c.lat);
+      if (c && !back && !this.framed) this.host.flyTo(c.lon, c.lat);
     } catch {
       if (t === this.token) rangeNote.textContent = 'The map of where it lives did not load. Open the species again to retry.';
     }

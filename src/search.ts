@@ -4,6 +4,7 @@ import { h, loadPhoto } from './dom';
 import { mergeHits, rankHits, type Hit } from './search-merge';
 import { GROUP_LABEL } from './taxa';
 import { commonsThumbs } from './wiki';
+import { silhouette } from './silhouettes';
 
 export function initSearch(input: HTMLInputElement, list: HTMLUListElement, status: HTMLElement, pick: (id: number) => void) {
   let timer = 0, seq = 0, hits: Hit[] = [], cursor = -1;
@@ -48,7 +49,7 @@ export function initSearch(input: HTMLInputElement, list: HTMLUListElement, stat
     hits.forEach((hit, i) => {
       const name = h('span', { class: 'hit-name', text: hit.scientificName });
       const latin = h('span', { class: 'latin', text: '' });
-      const thumb = h('span', { class: `hit-thumb g-${hit.group}` });
+      const thumb = h('span', { class: `hit-thumb g-${hit.group}` }, silhouette(hit.group));
       const li = h('li', { attrs: { id: `hit-${i}`, role: 'option', 'aria-selected': 'false' } }, thumb,
         h('span', { class: 'hit-text' }, name, latin, h('span', { class: 'hit-group', text: hit.rank === 'Species' ? GROUP_LABEL[hit.group] : `${hit.rank}, ${GROUP_LABEL[hit.group].toLowerCase()}` })));
       li.addEventListener('mousedown', (e) => { e.preventDefault(); choose(i); });

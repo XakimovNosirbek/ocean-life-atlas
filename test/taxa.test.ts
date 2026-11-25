@@ -6,7 +6,7 @@ const turtle: Taxon = { taxonID: 137206, scientificName: 'Chelonia mydas', taxon
 const egret: Taxon = { taxonID: 212665, scientificName: 'Egretta gularis', taxonRank: 'Species', kingdom: 'Animalia', phylum: 'Chordata', superclass: 'Reptilia', class: 'Aves', records: 40 };
 const bacteria: Taxon = { taxonID: 393070, scientificName: 'Clostridiales', taxonRank: 'Order', kingdom: 'Bacteria', records: 25 };
 const shark: Taxon = { taxonID: 105847, scientificName: 'Rhincodon typus', taxonRank: 'Species', kingdom: 'Animalia', phylum: 'Chordata', class: 'Elasmobranchii', records: 40 };
-const tuna: Taxon = { taxonID: 127029, scientificName: 'Thunnus albacares', taxonRank: 'Species', kingdom: 'Animalia', phylum: 'Chordata', class: 'Teleostei', records: 5 };
+const tuna: Taxon = { taxonID: 127027, scientificName: 'Thunnus albacares', taxonRank: 'Species', kingdom: 'Animalia', phylum: 'Chordata', class: 'Teleostei', records: 5 };
 
 describe('groups', () => {
   it('puts each kind of animal where a reader expects it', () => {

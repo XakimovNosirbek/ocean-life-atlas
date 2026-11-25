@@ -13,6 +13,8 @@ const shots = [
   { file: 'species.png', hash: '#at=-16.50,146.20&sp=105817', size: [1440, 900], wait: '.hero img' },
   { file: 'looked.png', hash: '#layer=looked', size: [1440, 900], wait: null },
   { file: 'search.png', hash: '', size: [1440, 900], search: 'octopus' },
+  { file: 'journeys.png', hash: '#sp=137209', size: [1440, 900], click: '.tags .btn', wait: '.track-list' },
+  { file: 'migrations.png', hash: '', size: [1440, 900], click: '#migrations-open', wait: '.mig' },
   { file: 'phone.png', hash: '#at=27.50,34.20', size: [390, 844], wait: '.tile img.in', mobile: true },
 ];
 
@@ -25,7 +27,11 @@ for (const s of shots) {
     await page.fill('#search', s.search);
     await page.waitForSelector('#hits .hit-thumb img', { timeout: 40000 }).catch(() => console.warn(`${s.file}: no thumbnails`));
   }
-  if (s.wait) await page.waitForSelector(s.wait, { timeout: 45000 }).catch(() => console.warn(`${s.file}: ${s.wait} did not appear`));
+  if (s.click) {
+    await page.waitForSelector(s.click, { timeout: 45000 }).catch(() => {});
+    await page.click(s.click).catch((e) => console.warn(`${s.file}: click failed: ${e.message}`));
+  }
+  if (s.wait) await page.waitForSelector(s.wait, { timeout: 90000 }).catch(() => console.warn(`${s.file}: ${s.wait} did not appear`));
   await page.waitForTimeout(4000); // tiles, photos and the fly-to settle
   await page.screenshot({ path: `${out}/${s.file}` });
   console.log(`${out}/${s.file}`);
