@@ -1,0 +1,30 @@
+{
+  "name": "ocean-life-atlas",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Click the sea, see who lives there. An open atlas of ocean life built on OBIS, WoRMS and Wikidata.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "data": "node scripts/fetch_records.mjs",
+    "shots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/source-serif-4": "5.3.1",
+    "maplibre-gl": "6.18.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "7946.0.16",
+    "@types/node": "24.10.1",
+    "playwright-core": "1.64.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.0.5"
+  }
+}
