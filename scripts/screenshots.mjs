@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
-const base = process.argv[2] ?? 'http://localhost:5199/ocean-life-atlas/';
+const base = process.argv[2] ?? 'http://localhost:5199/';
 const out = 'docs/img';
 mkdirSync(out, { recursive: true });
 

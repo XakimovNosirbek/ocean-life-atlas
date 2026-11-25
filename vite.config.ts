@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
-// GitHub Pages serves the site from /ocean-life-atlas/; set BASE=/ for a custom domain.
+// Served from the site root (https://oceanlife.bristleconelab.org). Set BASE=/some/path/ to host under a sub-path.
 export default defineConfig({
-  base: process.env.BASE ?? '/ocean-life-atlas/',
+  base: process.env.BASE ?? '/',
   build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
   test: { environment: 'node', include: ['test/**/*.test.ts'] },
 });

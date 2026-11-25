@@ -2,6 +2,8 @@
 
 **Click the sea, see who lives there.** An open, plain-language atlas of ocean life on a 3D globe.
 
+**Live: https://oceanlife.bristleconelab.org**
+
 - Click any spot in the ocean: the panel lists every animal and plant recorded within that 1.4° square (about 150 km
   across), with photos, everyday names, Red List status and a filter by kind (fish, sharks and rays, whales and
   dolphins, sea reptiles, seabirds, corals, shells and octopus, crabs, starfish, seaweed and plankton).
@@ -21,7 +23,9 @@
 |---|---|
 | ![Searching "octopus": common octopus first](docs/img/search.png) | <img src="docs/img/phone.png" alt="Red Sea on a phone" width="260"> |
 
-Every place and species has its own link, for example `#at=-16.50,146.20` (a place) or `#sp=105817` (a species).
+Every place and species has its own link, for example
+[`#at=-16.50,146.20`](https://oceanlife.bristleconelab.org/#at=-16.50,146.20) (a place) or
+[`#sp=105817`](https://oceanlife.bristleconelab.org/#sp=105817) (a species).
 
 ## Why
 
@@ -79,14 +83,16 @@ Code: MIT (see `LICENSE`).
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173/ocean-life-atlas/ (scripts/screenshots.mjs expects port 5199: npx vite --port 5199)
+npm run dev        # http://localhost:5173/ (scripts/screenshots.mjs expects port 5199: npx vite --port 5199)
 npm test           # unit tests (geohash, grouping, depth bands, search ranking, names, URL state)
 npm run build      # typecheck + production build in dist/
 npm run shots      # regenerate docs/img/*.png from a running dev server (needs Google Chrome)
 ```
 
-Pushes to `main` run the tests, build the site and publish it with GitHub Pages
-(`.github/workflows/deploy.yml`).
+Pushes to `main` run the tests, build the site and publish it to Cloudflare Pages (project `ocean-life-atlas`,
+`.github/workflows/deploy.yml`). The deploy step needs the repository secret `CLOUDFLARE_API_TOKEN` (Cloudflare
+Pages: Edit) and is skipped with a warning without it. Manual deploy: `npm run build && npx wrangler pages deploy dist
+--project-name ocean-life-atlas --branch main`.
 
 ## Related
 
