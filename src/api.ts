@@ -173,7 +173,7 @@ export async function wikipediaSummary(title: string): Promise<{ extract: string
 
 // ---------- Marine Regions ----------
 type Gaz = { preferredGazetteerName: string; placeType: string };
-const LOCAL = ['Reef', 'Bay', 'Gulf', 'Strait', 'Sound', 'Lagoon', 'Fjord', 'Estuary', 'Sea'];
+const LOCAL = ['Reef', 'Bay', 'Gulf', 'Strait', 'Sound', 'Lagoon', 'Fjord', 'Estuary', 'Sea', 'Lake'];
 const WATER = new Set(['IHO Sea Area', 'EEZ', 'Territorial Sea', 'Internal waters', 'High Seas', 'Ocean', 'Sea']);
 
 export interface PlaceName { name: string; land: boolean }

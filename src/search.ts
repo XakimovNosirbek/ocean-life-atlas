@@ -1,9 +1,9 @@
 // "Find a sea animal": common or scientific name, keyboard friendly (arrows, Enter, Escape).
 import * as api from './api';
-import { h } from './dom';
+import { h, loadPhoto } from './dom';
 import { mergeHits, rankHits, type Hit } from './search-merge';
 import { GROUP_LABEL } from './taxa';
-import { commonsThumb } from './wiki';
+import { commonsThumbs } from './wiki';
 
 export function initSearch(input: HTMLInputElement, list: HTMLUListElement, status: HTMLElement, pick: (id: number) => void) {
   let timer = 0, seq = 0, hits: Hit[] = [], cursor = -1;
@@ -72,7 +72,7 @@ export function initSearch(input: HTMLInputElement, list: HTMLUListElement, stat
         li.querySelector('.hit-name')!.textContent = w.name;
         li.querySelector('.latin')!.textContent = hit.scientificName;
       }
-      if (w.image) li.querySelector('.hit-thumb')!.append(h('img', { attrs: { src: commonsThumb(w.image, 96), alt: '', loading: 'lazy' } }));
+      if (w.image) loadPhoto(li.querySelector('.hit-thumb')!, commonsThumbs(w.image, 120), '', true);
     });
   };
 

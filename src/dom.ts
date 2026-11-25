@@ -21,3 +21,22 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Props = 
 }
 
 export const fmt = (n: number) => n.toLocaleString('en-US');
+
+/** Load a photo into a frame, trying each URL in turn. The frame's data-photo says what the reader sees:
+ *  "loading" (shimmer), "ok", or "none" (a quiet "No photo yet"). */
+export function loadPhoto(frame: HTMLElement, urls: string[], alt: string, eager = false, onLoad?: (img: HTMLImageElement) => void) {
+  frame.dataset.photo = 'loading';
+  const img = document.createElement('img');
+  img.alt = alt;
+  img.decoding = 'async';
+  if (eager) img.setAttribute('fetchpriority', 'high'); else img.loading = 'lazy';
+  let i = 0;
+  img.addEventListener('load', () => { img.classList.add('in'); frame.dataset.photo = 'ok'; onLoad?.(img); });
+  img.addEventListener('error', () => {
+    if (++i < urls.length) img.src = urls[i];
+    else { img.remove(); frame.dataset.photo = 'none'; }
+  });
+  img.src = urls[0];
+  frame.append(img);
+  return img;
+}

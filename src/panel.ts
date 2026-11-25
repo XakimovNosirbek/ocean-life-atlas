@@ -1,13 +1,13 @@
 // The side panel: "Life here" for a clicked square, and a species page. Data arrives in stages, so each view
 // renders a skeleton first and fills in names, photos and credits as they come back.
 import * as api from './api';
-import { h, fmt } from './dom';
+import { h, fmt, loadPhoto } from './dom';
 import { bboxToWkt, formatLatLon, geohash, geohashBounds, weightedCentre, type BBox } from './geo';
 import {
   countByGroup, depthBands, interleaveGroups, depthRange, DEPTH_BANDS, GROUPS, GROUP_LABEL, groupOf, IUCN_LABEL, rankSpecies, THREATENED,
   type GroupId, type Taxon,
 } from './taxa';
-import { articleTitle, commonsThumb, type WikiInfo } from './wiki';
+import { articleTitle, commonsThumbs, type WikiInfo } from './wiki';
 
 const PAGE = 36;
 const plural = (n: number, w: string) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
@@ -145,7 +145,7 @@ export class Panel {
     for (const sp of slice) {
       const name = h('span', { class: 'tile-name', text: '' });
       const latin = h('span', { class: 'latin', text: sp.scientificName });
-      const photo = h('div', { class: `tile-photo g-${groupOf(sp)}` }, h('span', { class: 'tile-group', text: GROUP_LABEL[groupOf(sp)] }));
+      const photo = h('div', { class: `tile-photo g-${groupOf(sp)}`, attrs: { 'data-photo': 'loading' } }, h('span', { class: 'tile-group', text: GROUP_LABEL[groupOf(sp)] }));
       const badge = sp.category && THREATENED.has(sp.category)
         ? h('span', { class: `iucn iucn-${sp.category}`, text: IUCN_LABEL[sp.category] }) : null;
       const btn = h('button', { class: 'tile', attrs: { 'aria-label': sp.scientificName } }, photo, badge, name, latin,
@@ -156,7 +156,7 @@ export class Panel {
       grid.append(li);
     }
     const sci = new Map(slice.map((s) => [s.taxonID, s.scientificName]));
-    api.wikidataByAphia(slice.map((s) => s.taxonID), sci).then(async (info) => {
+    api.wikidataByAphia(slice.map((s) => s.taxonID), sci).catch(() => new Map<number, WikiInfo>()).then(async (info) => {
       if (t !== this.token) return;
       const files: string[] = [];
       for (const [id, li] of tiles) {
@@ -168,12 +168,14 @@ export class Panel {
         }
         if (w.image) {
           files.push(w.image);
-          const img = h('img', { attrs: { src: commonsThumb(w.image, 360), alt: '', loading: 'lazy', decoding: 'async' } });
-          img.addEventListener('load', () => img.classList.add('in'));
-          img.addEventListener('error', () => img.remove());
+          const img = loadPhoto(li.querySelector('.tile-photo')!, commonsThumbs(w.image, 330), '', files.length <= 6);
           img.dataset.file = w.image;
-          li.querySelector('.tile-photo')!.append(img);
         }
+      }
+      // whatever Wikidata had no photo for: stop the shimmer and say so
+      for (const li of tiles.values()) {
+        const f = li.querySelector<HTMLElement>('.tile-photo')!;
+        if (f.dataset.photo === 'loading' && !f.querySelector('img')) f.dataset.photo = 'none';
       }
       // species Wikidata has no common name for: English vernacular from WoRMS, a few at a time
       const missing = [...tiles.keys()].filter((id) => !info.get(id)?.name);
@@ -246,9 +248,10 @@ export class Panel {
     } else status.hidden = true;
 
     if (wiki.image) {
-      const img = h('img', { attrs: { src: commonsThumb(wiki.image, 900), alt: `Photo of ${name.textContent}` } });
+      const frame = h('div', { class: 'hero-frame' });
       const cap = h('figcaption', { text: 'Photo: Wikimedia Commons' });
-      figure.append(img, cap);
+      figure.append(frame, cap);
+      loadPhoto(frame, commonsThumbs(wiki.image, 960), `Photo of ${name.textContent}`, true);
       api.commonsCredits([wiki.image]).then((c) => {
         const cr = c.get(wiki.image!);
         if (!cr || t !== this.token) return;

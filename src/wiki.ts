@@ -1,4 +1,5 @@
-// Parsing Wikidata answers into what a species card needs. Pure (test/wiki.test.ts).
+// Parsing Wikidata answers into what a species card needs. Pure (test/misc.test.ts).
+import { md5 } from './md5';
 
 export interface WikiInfo { name?: string; image?: string; article?: string }
 
@@ -9,10 +10,31 @@ export function commonsFile(url: string): string | null {
   try { return decodeURIComponent(m[1]).replace(/_/g, ' '); } catch { return null; }
 }
 
-/** Thumbnail URL for a Commons file at a given pixel width (Commons redirects to the scaled image). */
-export function commonsThumb(file: string, width: number): string {
-  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file.replace(/ /g, '_'))}?width=${width}`;
+/** Widths Wikimedia pre-renders and caches; any other width is scaled on demand (slow, and throttled with HTTP 429). */
+export const STANDARD_WIDTHS = [120, 250, 330, 500, 960, 1280];
+export function standardWidth(w: number): number {
+  return STANDARD_WIDTHS.find((s) => s >= w) ?? STANDARD_WIDTHS[STANDARD_WIDTHS.length - 1];
 }
+
+/** Candidate URLs for a Commons thumbnail, fastest first:
+ *  1. the CDN path on upload.wikimedia.org (no redirect; keyed by the MD5 of the file name),
+ *  2. Special:FilePath on commons.wikimedia.org (a redirect through the app servers; also copes with files smaller
+ *     than the width, where the CDN path fails). */
+export function commonsThumbs(file: string, width: number): string[] {
+  const w = standardWidth(width);
+  const name = file.replace(/ /g, '_').replace(/^./, (c) => c.toUpperCase());
+  const fallback = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=${w}`;
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase();
+  let thumb: string;
+  if (ext === 'svg') thumb = `${w}px-${name}.png`;
+  else if (ext === 'tif' || ext === 'tiff') thumb = `lossy-page1-${w}px-${name}.jpg`;
+  else if (ext === 'pdf' || ext === 'djvu') thumb = `page1-${w}px-${name}.jpg`;
+  else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) thumb = `${w}px-${name}`;
+  else return [fallback];
+  const hash = md5(name);
+  return [`https://upload.wikimedia.org/wikipedia/commons/thumb/${hash[0]}/${hash.slice(0, 2)}/${encodeURIComponent(name)}/${encodeURIComponent(thumb)}`, fallback];
+}
+export const commonsThumb = (file: string, width: number) => commonsThumbs(file, width)[0];
 
 /** Wikipedia title from an article URL. */
 export function articleTitle(url: string): string | null {
